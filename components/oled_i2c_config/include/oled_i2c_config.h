@@ -13,4 +13,4 @@ esp_err_t display_show_status(const char *status);
 
 esp_err_t display_render_main_screen(const char *status, const char *time_str);
 
-esp_err_t display_render_hours_screen(const char *status, const char *time_str,const char *hours_str, size_t hours_str_len);
+esp_err_t display_render_hours_screen(const char *status, const char *time_buffer, const char *hours_buffer, const char *daily_buffer, const char *weekly_buffer);

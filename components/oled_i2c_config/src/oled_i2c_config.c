@@ -57,20 +57,28 @@ esp_err_t display_render_main_screen(const char *status, const char *time_str)
     return ESP_OK;
 }
 
-esp_err_t display_render_hours_screen(const char *status, const char *time_str,const char *hours_str, size_t hours_str_len)
+esp_err_t display_render_hours_screen(const char *status, const char *time_buffer, const char *hours_buffer, const char *daily_buffer, const char *weekly_buffer)
 {
     if (!g_oled) return ESP_FAIL; // Ensure the display is initialized
 
     ssd1306_clear_display(g_oled, false); // Clear the display before rendering
 
-        // Display status on the first page
+    // Display status on the first page
     ssd1306_display_text(g_oled, 0, status, false);
 
     // Display time on the second page
-    ssd1306_display_text(g_oled, 2, time_str, false);
+    ssd1306_display_text(g_oled, 1, time_buffer, false);
 
     // Display hours on the third page
-    ssd1306_display_text(g_oled, 4, hours_str, false);
+    ssd1306_display_text(g_oled, 2, hours_buffer, false);
+
+    // Display daily hours on the fourth page
+    ssd1306_display_text(g_oled, 3, daily_buffer, false);
+
+    // Display weekly hours on the fifth page
+    ssd1306_display_text(g_oled, 4, weekly_buffer, false);
+
+
 
     return ESP_OK;
 }

@@ -8,4 +8,5 @@ idf_component_register(
         oled_i2c_config
         clock_in
         led
+        storage_log
 )

@@ -10,6 +10,7 @@
 #include "time_sync_ntp.h"
 #include "clock_in.h"
 #include "led.h"
+#include "storage_log.h"
 
 static const char *TAG = "APP";
 
@@ -24,7 +25,7 @@ gpio_config_t button_conf = {
 void app_main(void)
 {
     i2c_bus_t bus;
-    int last_button_state = 0;
+    int last_button_state = 1;
     int current_button_state = 0;
 
     ESP_LOGI(TAG, "Initializing I2C bus");
@@ -48,12 +49,22 @@ void app_main(void)
     ESP_LOGI(TAG, "Initializing LED");
     ESP_ERROR_CHECK(led_init());
 
+    ESP_LOGI(TAG, "Initializing storage log");
+    ESP_ERROR_CHECK(storage_log_init());
+
+    ESP_LOGI(TAG, "Configuring button GPIO");
     ESP_ERROR_CHECK(gpio_config(&button_conf));
 
     display_show_status("System Ready");
 
     char time_buffer[32];
     char hours_buffer[32];
+    char daily_buffer[32];
+    char weekly_buffer[32];
+
+    snprintf(hours_buffer, sizeof(hours_buffer), "Hours: 0.00");
+    snprintf(daily_buffer, sizeof(daily_buffer), "Day: 0.00");
+    snprintf(weekly_buffer, sizeof(weekly_buffer), "Week: 0.00");
 
     while (1) {
         current_button_state = gpio_get_level(CLOCK_BUTTON_GPIO);
@@ -64,10 +75,27 @@ void app_main(void)
                 ESP_ERROR_CHECK(time_clock_clock_in());
                 led_on();
             } else {
+                double last_hours = 0.0;
+                double daily_hours = 0.0;
+                double weekly_hours = 0.0;
+
                 ESP_LOGI(TAG, "Clocking out");
                 ESP_ERROR_CHECK(time_clock_clock_out());
                 led_off();
-                snprintf(hours_buffer, sizeof(hours_buffer), "Hours: %.2f", time_clock_get_last_hours());
+
+                last_hours = time_clock_get_last_hours();
+
+                if (storage_log_get_daily_hours(&daily_hours) != ESP_OK) {
+                    daily_hours = 0.0;
+                }
+
+                if (storage_log_get_weekly_hours(&weekly_hours) != ESP_OK) {
+                    weekly_hours = 0.0;
+                }
+
+                snprintf(hours_buffer, sizeof(hours_buffer), "Hours: %.2f", last_hours);
+                snprintf(daily_buffer, sizeof(daily_buffer), "Day: %.2f", daily_hours);
+                snprintf(weekly_buffer, sizeof(weekly_buffer), "Week: %.2f", weekly_hours);
             }
         }
 
@@ -77,11 +105,16 @@ void app_main(void)
             if (time_clock_is_clocked_in()) {
                 ESP_ERROR_CHECK(display_render_main_screen("CLOCKED IN", time_buffer));
             } else {
-                ESP_ERROR_CHECK(display_render_hours_screen("CLOCKED OUT", time_buffer, hours_buffer, sizeof(hours_buffer)));
+                ESP_ERROR_CHECK(display_render_hours_screen(
+                    "CLOCKED OUT",
+                    time_buffer,
+                    hours_buffer,
+                    daily_buffer,
+                    weekly_buffer
+                ));
             }
         }
 
         vTaskDelay(pdMS_TO_TICKS(200));
     }
-
 }

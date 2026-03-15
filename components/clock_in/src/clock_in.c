@@ -3,6 +3,7 @@
 // Daniel Clipper 03-07-26
 
 #include "clock_in.h"
+#include "storage_log.h"
 
 #include "esp_log.h"
 #include <time.h>
