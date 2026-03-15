@@ -7,4 +7,5 @@ idf_component_register(
         i2c_bus
         oled_i2c_config
         clock_in
+        led
 )
