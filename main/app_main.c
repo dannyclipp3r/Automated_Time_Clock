@@ -14,7 +14,7 @@
 
 static const char *TAG = "APP";
 
-gpio_config_t button_conf = {
+static gpio_config_t button_conf = {
     .pin_bit_mask = (1ULL << CLOCK_BUTTON_GPIO),
     .mode = GPIO_MODE_INPUT,
     .pull_up_en = GPIO_PULLUP_ENABLE,
@@ -22,11 +22,41 @@ gpio_config_t button_conf = {
     .intr_type = GPIO_INTR_DISABLE
 };
 
+static void update_hour_buffers(char *hours_buffer, size_t hours_len,
+                                char *daily_buffer, size_t daily_len,
+                                char *weekly_buffer, size_t weekly_len,
+                                double last_hours)
+{
+    double daily_hours = 0.0;
+    double weekly_hours = 0.0;
+
+    if (storage_log_get_daily_hours(&daily_hours) != ESP_OK) {
+        daily_hours = 0.0;
+    }
+
+    if (storage_log_get_weekly_hours(&weekly_hours) != ESP_OK) {
+        weekly_hours = 0.0;
+    }
+
+    snprintf(hours_buffer, hours_len, "Hours: %.2f", last_hours);
+    snprintf(daily_buffer, daily_len, "Day: %.2f", daily_hours);
+    snprintf(weekly_buffer, weekly_len, "Week: %.2f", weekly_hours);
+
+    ESP_LOGI(TAG, "Updated display values -> last: %.2f day: %.2f week: %.2f",
+             last_hours, daily_hours, weekly_hours);
+    ESP_LOGI(TAG, "%s | %s | %s", hours_buffer, daily_buffer, weekly_buffer);
+}
+
 void app_main(void)
 {
     i2c_bus_t bus;
     int last_button_state = 1;
     int current_button_state = 0;
+
+    char time_buffer[32];
+    char hours_buffer[32];
+    char daily_buffer[32];
+    char weekly_buffer[32];
 
     ESP_LOGI(TAG, "Initializing I2C bus");
     ESP_ERROR_CHECK(i2c_bus_init(&bus));
@@ -57,14 +87,11 @@ void app_main(void)
 
     display_show_status("System Ready");
 
-    char time_buffer[32];
-    char hours_buffer[32];
-    char daily_buffer[32];
-    char weekly_buffer[32];
-
-    snprintf(hours_buffer, sizeof(hours_buffer), "Hours: 0.00");
-    snprintf(daily_buffer, sizeof(daily_buffer), "Day: 0.00");
-    snprintf(weekly_buffer, sizeof(weekly_buffer), "Week: 0.00");
+    // Boot-time values from stored log
+    update_hour_buffers(hours_buffer, sizeof(hours_buffer),
+                        daily_buffer, sizeof(daily_buffer),
+                        weekly_buffer, sizeof(weekly_buffer),
+                        0.0);
 
     while (1) {
         current_button_state = gpio_get_level(CLOCK_BUTTON_GPIO);
@@ -76,8 +103,6 @@ void app_main(void)
                 led_on();
             } else {
                 double last_hours = 0.0;
-                double daily_hours = 0.0;
-                double weekly_hours = 0.0;
 
                 ESP_LOGI(TAG, "Clocking out");
                 ESP_ERROR_CHECK(time_clock_clock_out());
@@ -85,17 +110,10 @@ void app_main(void)
 
                 last_hours = time_clock_get_last_hours();
 
-                if (storage_log_get_daily_hours(&daily_hours) != ESP_OK) {
-                    daily_hours = 0.0;
-                }
-
-                if (storage_log_get_weekly_hours(&weekly_hours) != ESP_OK) {
-                    weekly_hours = 0.0;
-                }
-
-                snprintf(hours_buffer, sizeof(hours_buffer), "Hours: %.2f", last_hours);
-                snprintf(daily_buffer, sizeof(daily_buffer), "Day: %.2f", daily_hours);
-                snprintf(weekly_buffer, sizeof(weekly_buffer), "Week: %.2f", weekly_hours);
+                update_hour_buffers(hours_buffer, sizeof(hours_buffer),
+                                    daily_buffer, sizeof(daily_buffer),
+                                    weekly_buffer, sizeof(weekly_buffer),
+                                    last_hours);
             }
         }
 

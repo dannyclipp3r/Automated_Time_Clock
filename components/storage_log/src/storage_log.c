@@ -13,13 +13,24 @@
 static const char *TAG = "storage_log";
 static const char *LOG_PATH = "/spiffs/shifts.csv";
 
+static bool parse_shift_line(const char *line, int *year, int *month, int *day, double *hours)
+{
+    char in_buf[16];
+    char out_buf[16];
+
+    int matched = sscanf(line, "%d-%d-%d,%15[^,],%15[^,],%lf",
+                         year, month, day, in_buf, out_buf, hours);
+
+    return (matched == 6);
+}
+
 esp_err_t storage_log_init(void)
 {
     esp_vfs_spiffs_conf_t conf = {
         .base_path = "/spiffs",
         .partition_label = NULL,
         .max_files = 5,
-        .format_if_mount_failed = true
+        .format_if_mount_failed = false
     };
 
     esp_err_t err = esp_vfs_spiffs_register(&conf);
@@ -32,6 +43,14 @@ esp_err_t storage_log_init(void)
     err = esp_spiffs_info(NULL, &total, &used);
     if (err == ESP_OK) {
         ESP_LOGI(TAG, "SPIFFS total=%u used=%u", (unsigned)total, (unsigned)used);
+    }
+
+    FILE *f = fopen(LOG_PATH, "r");
+    if (f) {
+        ESP_LOGI(TAG, "Existing shift log found: %s", LOG_PATH);
+        fclose(f);
+    } else {
+        ESP_LOGW(TAG, "Shift log file not found: %s", LOG_PATH);
     }
 
     return ESP_OK;
@@ -92,35 +111,33 @@ esp_err_t storage_log_get_daily_hours(double *total_hours)
 
     FILE *f = fopen(LOG_PATH, "r");
     if (!f) {
-        ESP_LOGE(TAG, "Failed to open log file");
+        ESP_LOGE(TAG, "Failed to open log file: %s", LOG_PATH);
         return ESP_FAIL;
     }
 
     time_t now = time(NULL);
-    struct tm today = {0};
-    localtime_r(&now, &today);
+    struct tm today_tm = {0};
+    localtime_r(&now, &today_tm);
 
-    int today_year  = today.tm_year + 1900;
-    int today_month = today.tm_mon + 1;
-    int today_day   = today.tm_mday;
+    int today_year = today_tm.tm_year + 1900;
+    int today_month = today_tm.tm_mon + 1;
+    int today_day = today_tm.tm_mday;
+
+    ESP_LOGI(TAG, "Today is %04d-%02d-%02d", today_year, today_month, today_day);
 
     char line[128];
 
     while (fgets(line, sizeof(line), f)) {
         int year, month, day;
-        char in_buf[16];
-        char out_buf[16];
         double hours;
 
-        int matched = sscanf(line, "%d-%d-%d,%15[^,],%15[^,],%lf",
-                             &year, &month, &day, in_buf, out_buf, &hours);
+        if (parse_shift_line(line, &year, &month, &day, &hours)) {
+            ESP_LOGI(TAG, "Daily parsed row: %04d-%02d-%02d -> %.2f",
+                     year, month, day, hours);
 
-        if (matched == 6) {
-            if (year == today_year &&
-                month == today_month &&
-                day == today_day)
-            {
+            if (year == today_year && month == today_month && day == today_day) {
                 *total_hours += hours;
+                ESP_LOGI(TAG, "Daily match, running total = %.2f", *total_hours);
             }
         }
     }
@@ -139,7 +156,7 @@ esp_err_t storage_log_get_weekly_hours(double *total_hours)
 
     FILE *f = fopen(LOG_PATH, "r");
     if (!f) {
-        ESP_LOGE(TAG, "Failed to open log file");
+        ESP_LOGE(TAG, "Failed to open log file: %s", LOG_PATH);
         return ESP_FAIL;
     }
 
@@ -147,44 +164,44 @@ esp_err_t storage_log_get_weekly_hours(double *total_hours)
     struct tm now_tm = {0};
     localtime_r(&now, &now_tm);
 
-    // Monday-based week start
     int days_since_monday = (now_tm.tm_wday + 6) % 7;
 
-    now_tm.tm_hour = 0;
-    now_tm.tm_min = 0;
-    now_tm.tm_sec = 0;
-    now_tm.tm_mday -= days_since_monday;
+    struct tm week_start_tm = now_tm;
+    week_start_tm.tm_hour = 0;
+    week_start_tm.tm_min = 0;
+    week_start_tm.tm_sec = 0;
+    week_start_tm.tm_mday -= days_since_monday;
 
-    time_t week_start = mktime(&now_tm);
+    time_t week_start = mktime(&week_start_tm);
 
-    struct tm end_tm = now_tm;
-    end_tm.tm_mday += 7;
-    time_t week_end = mktime(&end_tm);
+    struct tm week_end_tm = week_start_tm;
+    week_end_tm.tm_mday += 7;
+    time_t week_end = mktime(&week_end_tm);
+
+    ESP_LOGI(TAG, "Week start ts=%lld end ts=%lld",
+             (long long)week_start, (long long)week_end);
 
     char line[128];
 
     while (fgets(line, sizeof(line), f)) {
         int year, month, day;
-        char in_buf[16];
-        char out_buf[16];
         double hours;
 
-        int matched = sscanf(line, "%d-%d-%d,%15[^,],%15[^,],%lf",
-                             &year, &month, &day, in_buf, out_buf, &hours);
-
-        if (matched == 6) {
+        if (parse_shift_line(line, &year, &month, &day, &hours)) {
             struct tm entry_tm = {0};
             entry_tm.tm_year = year - 1900;
-            entry_tm.tm_mon  = month - 1;
+            entry_tm.tm_mon = month - 1;
             entry_tm.tm_mday = day;
-            entry_tm.tm_hour = 0;
-            entry_tm.tm_min  = 0;
-            entry_tm.tm_sec  = 0;
+            entry_tm.tm_hour = 12;
 
             time_t entry_time = mktime(&entry_tm);
 
+            ESP_LOGI(TAG, "Weekly parsed row: %04d-%02d-%02d -> %.2f (ts=%lld)",
+                     year, month, day, hours, (long long)entry_time);
+
             if (entry_time >= week_start && entry_time < week_end) {
                 *total_hours += hours;
+                ESP_LOGI(TAG, "Weekly match, running total = %.2f", *total_hours);
             }
         }
     }

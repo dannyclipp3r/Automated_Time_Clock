@@ -52,13 +52,23 @@ bool time_clock_is_clocked_in(void){
     return g_is_clocked_in;
 }
 
-double time_clock_get_last_hours(void){
+double time_clock_get_last_hours(void)
+{
     if (g_in_time != 0 && g_out_time != 0) {
         double seconds = difftime(g_out_time, g_in_time);
-        g_hours = seconds / 3600.0; // Convert seconds to hours
+        g_hours = seconds / 3600.0;
+
         ESP_LOGI(TAG, "Hours calculated: %.2f", g_hours);
+
+        esp_err_t err = storage_log_append_shift(g_in_time, g_out_time, g_hours);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to append shift log");
+        } else {
+            ESP_LOGI(TAG, "Shift appended successfully");
+        }
     } else {
         ESP_LOGW(TAG, "Cannot calculate hours: In time or out time is not set");
     }
+
     return g_hours;
 }
