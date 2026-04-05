@@ -11,6 +11,7 @@
 #include "clock_in.h"
 #include "led.h"
 #include "storage_log.h"
+#include "http_client.h"
 
 static const char *TAG = "APP";
 
@@ -45,6 +46,89 @@ static void update_hour_buffers(char *hours_buffer, size_t hours_len,
     ESP_LOGI(TAG, "Updated display values -> last: %.2f day: %.2f week: %.2f",
              last_hours, daily_hours, weekly_hours);
     ESP_LOGI(TAG, "%s | %s | %s", hours_buffer, daily_buffer, weekly_buffer);
+}
+
+static void email_task(void *pvParameters)
+{
+    char *email_body = (char *)pvParameters;
+
+    ESP_LOGI("EMAIL_TASK", "Starting email task");
+    ESP_LOGI("EMAIL_TASK", "Stack high water mark before send: %u bytes",
+             (unsigned)uxTaskGetStackHighWaterMark(NULL));
+
+    send_email(email_body);
+
+    ESP_LOGI("EMAIL_TASK", "Stack high water mark after send: %u bytes",
+             (unsigned)uxTaskGetStackHighWaterMark(NULL));
+
+    free(email_body);
+    vTaskDelete(NULL);
+}
+
+static bool email_sent_this_week = false;
+
+void check_and_send_email(void)
+{
+    ESP_LOGI(TAG, "Checking whether weekly email should be sent");
+
+    char email_body[512];
+    char date_str[32];
+    double weekly_hours = 0.0;
+    struct tm timeinfo;
+
+    if (storage_log_get_weekly_hours(&weekly_hours) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to get weekly hours for email check");
+        return;
+    }
+
+    if (time_sync_ntp_get_timeinfo(&timeinfo) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to get time info for email check");
+        return;
+    }
+
+    ESP_LOGI(TAG, "Weekly hours retrieved: %.2f", weekly_hours);
+    ESP_LOGI(TAG, "Time info: wday=%d hour=%d min=%d",
+             timeinfo.tm_wday, timeinfo.tm_hour, timeinfo.tm_min);
+
+    strftime(date_str, sizeof(date_str), "%m-%d-%Y", &timeinfo);
+    build_email_body(email_body, sizeof(email_body), date_str, weekly_hours);
+
+    ESP_LOGI(TAG, "Built email body: %s", email_body);
+
+    if (timeinfo.tm_wday == 6 && timeinfo.tm_hour == 21) {
+        if (!email_sent_this_week) {
+            ESP_LOGI(TAG, "Conditions met for sending email");
+            char *email_copy = malloc(strlen(email_body) + 1);
+            if (email_copy == NULL) {
+                ESP_LOGE(TAG, "Failed to allocate email buffer");
+                return;
+            }
+            strcpy(email_copy, email_body);
+            BaseType_t result = xTaskCreate(
+                email_task,
+                "email_task",
+                8192,
+                email_copy,
+                5,
+                NULL
+            );
+            if (result != pdPASS) {
+                ESP_LOGE(TAG, "Failed to create email task");
+                free(email_copy);
+                return;
+            }
+            email_sent_this_week = true;
+        } else {
+            ESP_LOGI(TAG, "Email already sent for this week");
+        }
+    } else {
+        ESP_LOGI(TAG, "Not time to send email yet");
+    }
+
+    // Reset flag after the scheduled day/time window has passed
+    if (timeinfo.tm_wday != 6) {
+        email_sent_this_week = false;
+    }
 }
 
 void app_main(void)
@@ -94,6 +178,7 @@ void app_main(void)
                         0.0);
 
     while (1) {
+        ESP_LOGE(TAG, "===== APP_MAIN BUILD MARKER 12345 =====");
         current_button_state = gpio_get_level(CLOCK_BUTTON_GPIO);
 
         if (current_button_state == 0 && last_button_state == 1) {
@@ -132,6 +217,8 @@ void app_main(void)
                 ));
             }
         }
+
+        check_and_send_email();
 
         vTaskDelay(pdMS_TO_TICKS(200));
     }

@@ -9,4 +9,5 @@ idf_component_register(
         clock_in
         led
         storage_log
+        http_client
 )

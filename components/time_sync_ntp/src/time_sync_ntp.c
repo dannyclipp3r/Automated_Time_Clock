@@ -88,3 +88,20 @@ esp_err_t time_sync_ntp_get_time(char *time_str, size_t max_len)
 
     return ESP_OK;
 }
+
+esp_err_t time_sync_ntp_get_timeinfo(struct tm *timeinfo)
+{
+    if (timeinfo == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    time_t now = 0;
+    time(&now);
+    localtime_r(&now, timeinfo);
+
+    if (timeinfo->tm_year < (2024 - 1900)) {
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
