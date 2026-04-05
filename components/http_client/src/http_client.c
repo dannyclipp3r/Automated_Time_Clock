@@ -12,9 +12,9 @@
 
 static const char *TAG = "BREVO";
 
-#define BREVO_API_KEY "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"
-#define FROM_EMAIL    "danny.clipp3r@gmail.com"
-#define TO_EMAIL      "danny.clipp3r@gmail.com"
+#define BREVO_API_KEY "YOUR_BREVO_API_KEY_HERE"
+#define FROM_EMAIL    "sender@example.com"
+#define TO_EMAIL      "recipient@example.com"
 
 static esp_err_t http_event_handler(esp_http_client_event_t *evt)
 {

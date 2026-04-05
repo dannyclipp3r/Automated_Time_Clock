@@ -14,8 +14,8 @@
 
 #include "nvs_flash.h"
 
-#define WIFI_SSID      "DK-Crib 2.4GHz"
-#define WIFI_PASS       "dannykylie6103"
+#define WIFI_SSID      "username"
+#define WIFI_PASS       "password"
 
 static const char *TAG = "wifi_demo";
 
