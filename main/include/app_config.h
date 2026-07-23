@@ -1,0 +1,23 @@
+#pragma once
+
+// I2C Configuration (Configure as per your hardware setup)
+#define I2C_PORT_NUM     0
+#define I2C_SDA_GPIO     22
+#define I2C_SCL_GPIO     23
+
+#define I2C_GLITCH_CNT   7
+
+// WiFi
+#define WIFI_SSID       "your username"
+#define WIFI_PASSWORD   "your password"
+
+// NTP
+#define NTP_SERVER      "pool.ntp.org"
+
+// OLED
+#define OLED_WIDTH      128
+#define OLED_HEIGHT     64
+
+// GPIO
+#define CLOCK_BUTTON_GPIO   20
+#define CLOCK_LED_GPIO     18
