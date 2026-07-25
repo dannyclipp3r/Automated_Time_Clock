@@ -1,4 +1,13 @@
 idf_component_register(
-    SRCS "src/i2c_bus.c"
-    INCLUDE_DIRS "include" "../../include"
-    REQUIRES esp_driver_i2c)
+    SRCS
+        "led.c"
+        "i2c_bus.c"
+        "oled_i2c_config.c"
+    INCLUDE_DIRS
+        "include"
+    PRIV_REQUIRES
+        esp_driver_gpio
+        esp_driver_i2c
+        ssd1306
+        app_config
+)
