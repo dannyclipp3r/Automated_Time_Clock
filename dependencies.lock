@@ -1,0 +1,17 @@
+dependencies:
+  idf:
+    source:
+      type: idf
+    version: 5.5.4
+  k0i05/esp_type_utils:
+    dependencies: []
+    source:
+      path: C:\Users\danny\OneDrive\Desktop\Projects\automated_time_clock\firmware
+      type: local
+    version: '*'
+direct_dependencies:
+- idf
+- k0i05/esp_type_utils
+manifest_hash: 20b8e4ecdb311dc8279bbd4c940eb022616be9ca1c0bde924e727298ede83236
+target: esp32s3
+version: 2.0.0

@@ -1,4 +1,5 @@
 idf_component_register(
-    SRCS "src/storage_log.c"
-    INCLUDE_DIRS "include" "../../include"
-    REQUIRES spiffs)
+    SRCS "storage_log.c"
+    INCLUDE_DIRS "include"
+    REQUIRES spiffs
+    PRIV_REQUIRES app_config)

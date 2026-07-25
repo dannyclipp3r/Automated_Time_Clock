@@ -8,8 +8,8 @@
 #define I2C_GLITCH_CNT   7
 
 // WiFi
-#define WIFI_SSID       "your username"
-#define WIFI_PASSWORD   "your password"
+#define WIFI_SSID       "Batavia Public Library"
+#define WIFI_PASSWORD   ""
 
 // NTP
 #define NTP_SERVER      "pool.ntp.org"

@@ -11,7 +11,7 @@
 #include "oled_i2c_config.h"
 #include "wifi_manager.h"
 #include "time_sync_ntp.h"
-#include "clock_in.h"
+#include "clock_service.h"
 #include "led.h"
 #include "storage_log.h"
 #include "http_client.h"

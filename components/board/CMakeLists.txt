@@ -8,6 +8,6 @@ idf_component_register(
     PRIV_REQUIRES
         esp_driver_gpio
         esp_driver_i2c
-        ssd1306
+        esp_ssd1306
         app_config
 )

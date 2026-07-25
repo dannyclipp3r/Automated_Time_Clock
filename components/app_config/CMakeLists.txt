@@ -1,0 +1,3 @@
+IDF_COMPONENT_REGISTER(
+    INCLUDE_DIRS "include"
+)
