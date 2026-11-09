@@ -45,6 +45,6 @@ Pin numbers are ESP32-S3 GPIO numbers as defined in [app_config.h](include/app_c
 
 The repository contains no hardware photos, wiring diagram, automated test cases, or recorded timing and delivery measurements.
 
-## Résumé bullet
+## Resume bullet
 
 - Built an ESP32-S3 time clock in C with ESP-IDF, integrating GPIO controls, an I²C OLED, SNTP time sync, SPIFFS shift logs, and scheduled email reporting through the Brevo HTTPS API.
